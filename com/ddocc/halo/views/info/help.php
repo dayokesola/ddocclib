@@ -1,0 +1,3 @@
+<?php
+
+$page->Paint('Help');

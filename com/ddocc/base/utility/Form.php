@@ -4,6 +4,7 @@ namespace com\ddocc\base\utility;
 
 use com\ddocc\base\entity\SiteTab;
 use com\ddocc\base\utility\Session;
+use com\ddocc\base\service\SiteTabService;
 
 /**
  * Description of cls_form
@@ -28,7 +29,7 @@ class Form {
             ' . $ibox->msg . '</div>';
     }
 
-    public function Start($action = '', $autocomplete = 0, $multipart = 0, $method='post') {
+    public function Start($action = '', $autocomplete = 0, $multipart = 0, $method = 'post') {
         $dt = ' enctype="multipart/form-data" ';
         if ($multipart === 0) {
             $dt = '';
@@ -39,7 +40,7 @@ class Form {
         }
 
         $txt = '
-        <form role="form" method="'. $method .'" ' . $dt . $ac . '>';
+        <form role="form" method="' . $method . '" ' . $dt . $ac . '>';
         $token = md5(uniqid(rand(), TRUE));
         Session::Set("token_" . $action, $token);
         Session::Set("token_time_" . $action, time());
@@ -82,30 +83,48 @@ class Form {
         echo $txt;
     }
 
-    public function Button($name, $val, $col = 'primary', $class ='') {
+    public function Button($name, $val, $col = 'primary', $class = '') {
         $txt = '
             <input name="' . $name . '" id="' . $name . '" class="btn btn-' . $col . ' ' . $class . '" type="button" value="' . $val . '" />';
         echo $txt;
     }
 
-    public function Link($name, $val) {
+    public function Link($name, $val, $url = '') {
+        $href = "#";
+        if ($url != "") {
+            $href = $url;
+        }
         $txt = '
-            <a href="#" name="' . $name . '" id="' . $name . '">' . $val . '</a>';
+            <a href="' . $href . '" name="' . $name . '" id="' . $name . '">' . $val . '</a>';
         echo $txt;
     }
 
-    public function Submit($name, $val, $col = 'primary', $enabled = 1, $block = 1, $class ='') {
+    public function LinkButton($name, $val, $url = '', $col = 'default') {
+        $href = "#";
+        if ($url != "") {
+            $href = $url;
+        }
+        $txt = '
+            <a class="btn btn-' . $col . ' href="' . $href . '" name="' . $name . '" id="' . $name . '">' . $val . '</a>';
+        echo $txt;
+    }
+
+    public function Submit($name, $val, $col = 'primary', $enabled = 1, $block = 1, $class = '') {
         $hide = '';
         if ($enabled == 0) {
             $hide = ' disabled';
         }
-        
+        $verify ='';
+        if($enabled == 2){
+            $verify = ' onclick="return Validate();" ';
+        }
+
         $blk = ' btn-block';
         if ($block == 0) {
             $blk = ' ';
         }
         $txt = '
-            <input name="' . $name . '" id="' . $name . '" class="btn btn-' . $col . ' '.$blk.' ' . $class . '"  type="submit" value="' . $val . '" ' . $hide . ' />';
+            <input ' . $verify . ' name="' . $name . '" id="' . $name . '" class="btn btn-' . $col . ' ' . $blk . ' ' . $class . '"  type="submit" value="' . $val . '" ' . $hide . ' />';
         echo $txt;
     }
 
@@ -121,6 +140,32 @@ class Form {
     }
     
     
+    public function Date($name, $label, $val,  $enabled = 1, $placer = '', $class = '') {
+        $hide = '';
+        if ($enabled == 0) {
+            $hide = ' disabled';
+        }
+        if ($enabled == 2) {
+            $hide = ' readonly';
+        }
+        $txt = ' 
+            <div class="form-group" id="id_' . $name . '">
+                <label for="' . $name . '">' . $label . '</label>
+                <input type="text" class="form-control ' . $class . '" id="' . $name . '" name="' . $name . '" value="' . $val . '" placeholder="' . $placer . '"' . $hide . '>
+            </div> 
+            <script type=text/javascript>
+        $("#id_' . $name . ' input").datepicker({
+            format: "yyyy-mm-dd",
+            todayBtn: "linked",
+            autoclose: true,
+            todayHighlight: true
+        }); 
+    </script>
+
+
+            ';
+        echo $txt;
+    }
 
     public function TextBox($name, $label, $val, $type = 'text', $enabled = 1, $placer = '', $class = '') {
         $hide = '';
@@ -154,7 +199,7 @@ class Form {
         echo $txt;
     }
 
-    public function TextBox_h($name, $label, $val, $type = 'text', $hor = 4, $enabled = 1, $placer = '', $class ='') {
+    public function TextBox_h($name, $label, $val, $type = 'text', $hor = 4, $enabled = 1, $placer = '', $class = '') {
         $hide = '';
         $ho2 = 12 - $hor;
         if ($enabled == 0) {
@@ -195,28 +240,53 @@ class Form {
         echo $txt;
     }
 
-    public function DropListTab($name, $label, $val, $tab_id, $enabled = 1, $sort = 2) {
+    public function DropListTab($name, $label, $val, $tab_id, $enabled = 1, $sort = 2, 
+            $filter1 = '', $filter2 ='', $filter3='',$filter4='',$filter5='') {
         $hide = '';
         if ($enabled == 0) {
             $hide = ' disabled';
         }
         $t = new SiteTab();
         $t->tab_id = $tab_id;
-        $ds = $t->GetList($sort);
+        $ds = SiteTabService::GetTabList($tab_id, $sort,$filter1, $filter2 , $filter3,$filter4,$filter5); //$t->GetList($sort);
         $selected = '';
         $txt = '<div class="form-group">
                 <label for="' . $name . '">' . $label . '</label>
                 <select class="form-control" name="' . $name . '" id="' . $name . '"' . $hide . '>
             ';
         foreach ($ds as $dr) {
-            if ($val == $dr["tab_ent"]) {
+            if ($val == $dr->tab_ent) {
                 $selected = ' selected="selected"';
             }
-            $txt .= '      <option value="' . $dr["tab_ent"] . '"' . $selected . '>' . $dr["tab_text"] . '</option>
+            $txt .= '      <option value="' . $dr->tab_ent . '"' . $selected . '>' . $dr->tab_text . '</option>
             ';
             $selected = '';
         }
         $txt .= '    </select>
+            </div> ';
+        echo $txt;
+    }
+    public function DropList2($name, $label, $val, $ds, $enabled = 1) {
+        $hide = '';
+        if ($enabled == 0) {
+            $hide = ' disabled ';
+        }
+        $selected = '';
+        $txt = '
+            <div class="form-group">
+                <label for="' . $name . '">' . $label . '</label>
+                <select class="form-control" name="' . $name . '" id="' . $name . '"' . $hide . '>';
+        
+        foreach ($ds as $dr) {
+            if ($val == $dr->GetId()) {
+                $selected = ' selected="selected"';
+            }
+            $txt .= '
+                    <option value="' . $dr->GetId() . '"' . $selected . '>' . $dr->GetName() . '</option>';
+            $selected = '';
+        }
+        $txt .= '
+                </select>
             </div> ';
         echo $txt;
     }
@@ -311,7 +381,7 @@ class Form {
             </div> ';
         echo $txt;
     }
-    
+
     public function CheckBoxBare($name, $label, $val, $enabled = 1) {
         $hide = '';
         if ($enabled == 0) {

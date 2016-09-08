@@ -1,0 +1,8 @@
+index - full list
+list - restricted list
+create - new entity
+edit - update entity
+delete - delete entity
+
+add - 
+remove -

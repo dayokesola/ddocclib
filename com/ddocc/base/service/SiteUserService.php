@@ -1,30 +1,27 @@
 <?php
 
 namespace com\ddocc\base\service;
-
-use com\ddocc\base\entity\DiallingCode;
-use com\ddocc\base\entity\SiteUser;
-use com\ddocc\base\dto\SiteUserDTO;
-use com\ddocc\base\entity\SiteUserReg;
-use com\ddocc\base\entity\Token;
-use com\ddocc\base\utility\ErrorLog;
-use com\ddocc\base\utility\Gizmo;
-use com\ddocc\base\utility\Connect;
-use com\ddocc\base\utility\Session;
-use com\ddocc\base\utility\Mailer;
-use com\ddocc\ddlite\data\iBase;
+  
+use com\ddocc\base\dto\SiteUserDTO;   
+use com\ddocc\base\utility\Connect; 
+use com\ddocc\base\utility\Mailer; 
 use com\ddocc\base\entity\Profile;
 
 class SiteUserService {
-
-    public static function GetUserByUsername($username) {
-        $sql = "SELECT user_id, auth_email, auth_phrase, auth_spice, role_id, 
-            statusflag, date_added, last_updated, last_reset, fname,lname,auth_code,mobile
-        FROM __DB__users WHERE auth_email = :auth_email";
+    public static $base_sql = 'SELECT  siteuser.auth_email AS email, siteuser.auth_email,
+        siteuser.auth_phrase, siteuser.auth_code,siteuser.auth_spice,  siteuser.role_id, siteuser.statusflag, 
+        siteuser.date_added, siteuser.last_updated, siteuser.last_reset, siteuser.fname, siteuser.lname, siteuser.mobile,
+        siterole.role_name, siteusertext.tab_text AS statustext, userparam.*
+        FROM __DB__users siteuser LEFT JOIN __DB__roles siterole ON siteuser.role_id = siterole.role_id 
+        LEFT JOIN __DB__text siteusertext ON siteusertext.tab_id = 3 AND siteuser.statusflag = siteusertext.tab_ent 
+        left join __DB__user_params userparam on siteuser.user_id = userparam.user_id ';
+    
+    public static function GetUserById($user_id) {
+        $sql = SiteUserService::$base_sql . " WHERE siteuser.user_id = :user_id";
         $cn = new Connect();
         $cn->SetSQL($sql);
-        $cn->AddParam(':auth_email', $username);
-        $su = new SiteUser();
+        $cn->AddParam(':user_id', $user_id);
+        $su = new SiteUserDTO();
         $ds = $cn->Select();
         $su->user_id = 0;
         if ($cn->num_rows > 0) {
@@ -33,10 +30,14 @@ class SiteUserService {
         return $su;
     }
     
-    public static function GetUserByUsernameDTO($username) {
-        $sql = "SELECT user_id, auth_email as email,   role_id, 
-            statusflag, date_added, last_updated, last_reset, fname,lname,mobile
-        FROM __DB__users WHERE auth_email = :auth_email";
+    public static function NewUser() {         
+        $su = new SiteUserDTO();   
+        $su->user_id = 0;
+        return $su;
+    }
+
+    public static function GetUserByUsername($username) {
+        $sql = SiteUserService::$base_sql . " WHERE siteuser.auth_email = :auth_email";
         $cn = new Connect();
         $cn->SetSQL($sql);
         $cn->AddParam(':auth_email', $username);
@@ -47,10 +48,10 @@ class SiteUserService {
             $su->Set($ds[0]);
         }
         return $su;
-    }
+    } 
 
-    public static function Insert($item) {
-        $sql = "INSERT INTO halo_users (auth_email, auth_phrase, auth_spice, role_id, statusflag, date_added, "
+    public static function InsertUser($item) {
+        $sql = "INSERT INTO __DB__users (auth_email, auth_phrase, auth_spice, role_id, statusflag, date_added, "
                 . "last_updated, last_reset, fname, lname, auth_code, mobile)  "
                 . "VALUES ( :auth_email, :auth_phrase, :auth_spice, :role_id, :statusflag, :date_added, "
                 . ":last_updated, :last_reset, :fname, :lname, :auth_code, :mobile) ";
@@ -69,10 +70,20 @@ class SiteUserService {
         $cn->AddParam(':auth_code', $item->auth_code);
         $cn->AddParam(':mobile', $item->mobile);
         $item->user_id = $cn->Insert();
-        return $item->user_id;
+        
+        SiteUserService::InsertUserParam($item);        
+        return $item;
+    }
+    
+    public static function InsertUserParam($item) {
+        $sql = "INSERT INTO __DB__user_params (user_id ) VALUES ( :user_id) ";
+        $cn = new Connect();
+        $cn->SetSQL($sql); 
+        $cn->AddParam(':user_id', $item->user_id);
+        $cn->Update(); 
     }
 
-    public static function Update($item) {
+    public static function UpdateUser($item) {
         $sql = "UPDATE __DB__users SET auth_email = :auth_email, auth_phrase = :auth_phrase, "
                 . "auth_spice = :auth_spice, role_id = :role_id, statusflag = :statusflag, "
                 . "date_added = :date_added, last_updated = :last_updated, last_reset = :last_reset, "
@@ -93,11 +104,28 @@ class SiteUserService {
         $cn->AddParam(':mobile', $item->mobile);
         $cn->AddParam(':user_id', $item->user_id);
         return $cn->Update();
-    }    
+    }
+    
+    public static function UpdateUserParam($item, $param_field) {
+        $sql = "UPDATE __DB__user_params SET $param_field = :param_value  WHERE user_id = :user_id";
+        $cn = new Connect();
+        $cn->SetSQL($sql);
+        $cn->AddParam(':param_value', $item->{$param_field}); 
+        $cn->AddParam(':user_id', $item->user_id);
+        return $cn->Update();
+    }
+    
+    public static function DeleteUser($id) {
+        $sql = "DELETE FROM __DB__users WHERE user_id = :user_id"; 
+        $cn = new Connect();
+        $cn->SetSQL($sql);
+	$cn->AddParam(':user_id', $id);          
+        return $cn->Delete();
+    }
 
     public static function InsertProfileInfo($su) {
-        $sql = "insert into __DB__profiles (user_id, profile_type_id) " .
-                " select :id, tab_ent from __DB__text where tab_id = 15 " .
+        $sql = "insert into __DB__profiles (entity_type_name, user_id, profile_type_id) " .
+                " select 'user',:id, tab_ent from __DB__text where tab_id = 15 " .
                 " and tab_ent not in (select profile_type_id from __DB__profiles where user_id = :id)";
         $cn = new Connect();
         $cn->SetSQL($sql);
@@ -111,7 +139,7 @@ class SiteUserService {
         $sql = "select   t15.tab_ent as id,t15.tab_text as profile_slug,t15.var1 as profile_group,t15.var3 as data_type,"
                 . "t15.var2 as profile_name, p.profile_type_value as profile_value from " .
                 " __DB__text t15 left join __DB__profiles p on t15.tab_id = 15 and t15.tab_ent = p.profile_type_id " .
-                " where  p.user_id = :userid ";
+                " where entity_type_name ='user' and  p.user_id = :userid ";
         if ($filter != "") {
             $sql .= " and t15.var1 = :fil";
         }
@@ -129,27 +157,28 @@ class SiteUserService {
                 $items[$item->profile_slug] = $item;
             }
         }
-        return $items; 
+        return $items;
     }
 
     public static function SetProfileInfo($su) {
-        $sql = "update __DB__profiles set profile_type_value = :val " +
-                " where user_id = :uid and profile_type_value = :tid";
+        $sql = 'update __DB__profiles set profile_type_value = :pval  
+                 where user_id = :user_id and profile_type_id = :ptid';
         $cn = new Connect();
         $cn->Persist = true;
-        foreach ($this->ProfileKey as $key => $val) {
-            $tid = $this->ProfileKey[$key];
-            $val = $this->ProfileVal[$key];
-
+        $c = 0;
+        foreach ($su->profiles as  $p) {
+            $tid = $p->id;
+            $val = $p->profile_value; 
             $cn->SetSQL($sql);
-            $cn->AddParam('val', $val);
-            $cn->AddParam('uid', $this->user_id);
-            $cn->AddParam('tid', $tid);
-            $cn->Update();
+            $cn->AddParam(':pval', $val);
+            $cn->AddParam(':user_id', $su->user_id);
+            $cn->AddParam(':ptid', $tid);
+            $c += $cn->Update();  
         }
         $cn->CloseAll();
+        return $c;
     }
-    
+
     public static function MailReset($su) {
         $tmp = file_get_contents(SITEDOCS . "mails/template.html");
         $eml = file_get_contents(SITEDOCS . "mails/reset.html");
@@ -171,36 +200,58 @@ class SiteUserService {
     }
 
     public static function AllUsers() {
-        $sql = "SELECT * FROM __DB__users";
+        $sql = SiteUserService::$base_sql;
         $cn = new Connect();
         $cn->SetSQL($sql);
-        return $cn->Select();
+        $ds = $cn->Select();
+        $items = array();
+        if ($cn->num_rows > 0) {
+            foreach ($ds as $dr) {
+                $item = new SiteUserDTO();
+                $item->Set($dr);
+                $items[$item->user_id] = $item;
+            }
+        }
+        return $items;
     }
 
     public static function AllUsersByRole($role_id) {
-        $sql = "SELECT * FROM __DB__users where role_id = :role_id";
+        $sql = SiteUserService::$base_sql ." where siteuser.role_id = :role_id";
         $cn = new Connect();
         $cn->SetSQL($sql);
         $cn->AddParam('role_id', $role_id);
-        return $cn->Select();
+         $ds = $cn->Select();
+        $items = array();
+        if ($cn->num_rows > 0) {
+            foreach ($ds as $dr) {
+                $item = new SiteUserDTO();
+                $item->Set($dr);
+                $items[$item->user_id] = $item;
+            }
+        }
+        return $items;
     }
-
-    public static function SearchRoles($k) {
-        $sql = "SELECT * FROM __DB__roles where role_name like concat('%',:nme,'%')";
+    
+    public static function GetUsersByArray($recarray) {
+        $sql = SiteUserService::$base_sql ." where siteuser.user_id in ('0'";
+        foreach ($recarray as $rec) {
+            $sql .= ",'" . $rec . "'"; 
+        }
+        $sql .= ')';
         $cn = new Connect();
-        $cn->SetSQL($sql);
-        $cn->AddParam('nme', $k);
-        return $cn->Select();
+        $cn->SetSQL($sql); 
+         $ds = $cn->Select();
+        $items = array();
+        if ($cn->num_rows > 0) {
+            foreach ($ds as $dr) {
+                $item = new SiteUserDTO();
+                $item->Set($dr);
+                $items[$item->user_id] = $item;
+            }
+        }
+        return $items;
     }
+     
 
-    public static function AllRights($role_id) {
-        $sql = "SELECT f.fxn_id as mkey, f.fxn_name as label,IFNULL(rf.role_id,0) as mval, f.fxn_url AS url
-            FROM __DB__fxns f LEFT JOIN __DB__role_fxns rf ON f.fxn_id = rf.fxn_id
-            and f.fxn_secure = 1 AND (rf.role_id = :role_id OR rf.role_id IS NULL)";
-        $cn = new Connect();
-        $cn->SetSQL($sql);
-        $cn->AddParam('role_id', $role_id);
-        return $cn->Select();
-    }
 
 }

@@ -14,7 +14,7 @@ class SiteRoleController extends ControllerBase {
     }
     
     public function EditGet($request) {
-        $i = SiteRoleService::GetByID($request['get']['id']);
+        $i = SiteRoleService::GetRoleByID($request['get']['id']);
         $resp = array();
         if (intval($i->role_id) <= 0) {
             $resp['view'] = 'site-role.index';
@@ -28,21 +28,20 @@ class SiteRoleController extends ControllerBase {
     public function EditPost($request) {
         $resp = array();
         $fields = array('role_name');
-        $s = SiteRoleService::GetByID($request['get']['id']);
+        $s = SiteRoleService::GetRoleByID($request['get']['id']);
         $v = $s->SetPost($request['post'], $fields);
         if ($v != '') {
             $resp['alert'] = new Alert('danger', $v);
             return $resp;
         }
-        $k = SiteRoleService::Update($s);
+        $k = SiteRoleService::UpdateRole($s);
         if ($k > 0) {
             $resp['alert'] = new Alert('success', "Role has been updated");
         }
         $resp['role'] = $s;
         return $resp;
     }
-    
-    
+        
     public function CreateGet() {
         $i = new SiteRoleDTO();
         $i->role_id = 0;
@@ -61,12 +60,12 @@ class SiteRoleController extends ControllerBase {
             $resp['alert'] = new Alert('danger', $v);
             return $resp;
         }
-        $t = SiteRoleService::GetByName($dto->role_name);
+        $t = SiteRoleService::GetRoleByName($dto->role_name);
         if ($t->role_id > 0) {
             $resp['alert'] = new Alert('danger', 'Role with this name already exists');
             return $resp;
         }        
-        $k = SiteRoleService::Insert($dto);
+        $k = SiteRoleService::InsertRole($dto);
         if ($k > 0) {
             $resp['alert'] = new Alert('success', "Role has been create");
         }
@@ -87,6 +86,35 @@ class SiteRoleController extends ControllerBase {
         $fxns = SiteRoleService::AllRights($request['get']['id']);
         $resp = array();        
         $resp['fxns']= $fxns;
+        return $resp;
+    }
+    
+    public function DeleteGet($request) {
+        $i = SiteRoleService::GetRoleByID($request['get']['id']);
+        $resp = array();
+        if (intval($i->role_id) <= 0) {
+            $resp['view'] = 'site-role.index';
+            $resp['redirect'] = '1';
+        } else {
+            $resp['role'] = $i;
+        }
+        return $resp;
+    }
+
+    public function DeletePost($request) {
+        $resp = array();
+        $fields = array('role_name');
+        $s = SiteRoleService::GetRoleByID($request['get']['id']);
+        $v = $s->SetPost($request['post'], $fields);
+        if ($v != '') {
+            $resp['alert'] = new Alert('danger', $v);
+            return $resp;
+        }
+        $k = SiteRoleService::DeleteRole($s);
+        if ($k > 0) {
+            $resp['alert'] = new Alert('success', "Role has been deleted");
+        }
+        $resp['role'] = $s;
         return $resp;
     }
 }

@@ -1,17 +1,49 @@
 <?php
+
 namespace com\ddocc\base\service;
+
 use com\ddocc\base\utility\Connect;
 use com\ddocc\base\utility\Gizmo;
-use com\ddocc\base\entity\SiteRole;
+use com\ddocc\base\dto\SiteRoleDTO;
+
 class SiteRoleService {
 
-    public static function GetByID($id) {
-        $sql = "SELECT role_id, role_name, role_text, last_updated FROM __DB__roles WHERE role_id = :role_id";
+    public static $base_sql = 'SELECT role_id, role_name, role_text, last_updated FROM __DB__roles ';
+
+    public static function SearchRolesa($k) {
+        $sql = SiteRoleService::$base_sql . " where role_name like concat('%',:nme,'%')";
+        $cn = new Connect();
+        $cn->SetSQL($sql);
+        $cn->AddParam('nme', $k);
+        $ds = $cn->Select();
+        $items = array();
+        if ($cn->num_rows > 0) {
+            foreach ($ds as $dr) {
+                $item = new SiteRoleDTO();
+                $item->Set($dr);
+                $items[] = $item;
+            }
+        }
+        return $items;
+    }
+
+    public static function AllRights1($role_id) {
+        $sql = "SELECT f.fxn_id as mkey, f.fxn_name as label,IFNULL(rf.role_id,0) as mval, f.fxn_url AS url
+            FROM __DB__fxns f LEFT JOIN __DB__role_fxns rf ON f.fxn_id = rf.fxn_id
+            and f.fxn_secure = 1 AND (rf.role_id = :role_id OR rf.role_id IS NULL)";
+        $cn = new Connect();
+        $cn->SetSQL($sql);
+        $cn->AddParam('role_id', $role_id);
+        return $cn->Select();
+    }
+
+    public static function GetRoleByID($id) {
+        $sql = SiteRoleService::$base_sql . " WHERE role_id = :role_id";
         $cn = new Connect();
         $cn->SetSQL($sql);
         $cn->AddParam(':role_id', $id);
         $ds = $cn->Select();
-        $i = new SiteRole();
+        $i = new SiteRoleDTO();
         $i->role_id = 0;
         if ($cn->num_rows > 0) {
             $i->Set($ds[0]);
@@ -19,13 +51,13 @@ class SiteRoleService {
         return $i;
     }
 
-    public static function GetByName($id) {
-        $sql = "SELECT role_id, role_name, role_text, last_updated FROM __DB__roles WHERE role_name = :role_name";
+    public static function GetRoleByName($id) {
+        $sql = SiteRoleService::$base_sql . " WHERE role_name = :role_name";
         $cn = new Connect();
         $cn->SetSQL($sql);
         $cn->AddParam(':role_name', $id);
         $ds = $cn->Select();
-        $i = new SiteRole();
+        $i = new SiteRoleDTO();
         $i->role_id = 0;
         if ($cn->num_rows > 0) {
             $i->Set($ds[0]);
@@ -33,19 +65,27 @@ class SiteRoleService {
         return $i;
     }
 
-    public static function Update($i) {
-        $sql = "UPDATE __DB__roles SET role_name = :role_name,
+    public static function UpdateRole($i) {
+        $sql = "UPDATE __DB__roles SET role_name = :role_name,role_text = :role_text,
          last_updated = :last_updated WHERE role_id = :role_id";
         $cn = new Connect();
         $cn->SetSQL($sql);
         $cn->AddParam(':role_name', $i->role_name);
+        $cn->AddParam(':role_text', $i->role_text);
         $cn->AddParam(':last_updated', $i->last_updated);
         $cn->AddParam(':role_id', $i->role_id);
         return $cn->Update();
     }
+    
+     public static function DeleteRole($i) {
+        $sql = "Delete __DB__roles WHERE role_id = :role_id";
+        $cn = new Connect();
+        $cn->SetSQL($sql); 
+        $cn->AddParam(':role_id', $i->role_id);
+        return $cn->Delete();
+    }
 
-    public static function Insert($i)
-    {
+    public static function InsertRole($i) {
         $sql = "INSERT INTO __DB__roles (role_name, role_text, last_updated)  VALUES ( :role_name, :role_text, :last_updated) ";
         $cn = new Connect();
         $cn->SetSQL($sql);
@@ -55,20 +95,38 @@ class SiteRoleService {
         $i->role_id = $cn->Insert();
         return $i->role_id;
     }
-    
+
     public static function AllRoles() {
-        $sql = "SELECT * FROM __DB__roles order by role_name";
+        $sql = SiteRoleService::$base_sql . "  order by role_name";
         $cn = new Connect();
         $cn->SetSQL($sql);
-        return $cn->SelectObject();
+        $ds = $cn->Select();
+        $items = array();
+        if ($cn->num_rows > 0) {
+            foreach ($ds as $dr) {
+                $item = new SiteRoleDTO();
+                $item->Set($dr);
+                $items[] = $item;
+            }
+        }
+        return $items;
     }
 
     public static function SearchRoles($k) {
-        $sql = "SELECT * FROM __DB__roles where role_name like concat('%',:nme,'%')";
+        $sql = SiteRoleService::$base_sql . " where role_name like concat('%',:nme,'%')";
         $cn = new Connect();
         $cn->SetSQL($sql);
         $cn->AddParam('nme', $k);
-        return $cn->Select();
+        $ds = $cn->Select();
+        $items = array();
+        if ($cn->num_rows > 0) {
+            foreach ($ds as $dr) {
+                $item = new SiteRoleDTO();
+                $item->Set($dr);
+                $items[] = $item;
+            }
+        }
+        return $items;
     }
 
     public static function AllRights($role_id) {
@@ -137,11 +195,9 @@ class SiteRoleService {
             }
         }
 
-        $r = new SiteRole();
-        $r->role_id = $role_id;
-        $r->Load();
+        $r = SiteRoleService::GetRoleByID($role_id);
         $r->role_text = Gizmo::SafeHTMLEncode($txtMain);
-        $r->Update();
+        SiteRoleService::UpdateRole($r);
     }
 
 }

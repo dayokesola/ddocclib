@@ -11,6 +11,57 @@ namespace com\ddocc\base\utility;
 
 class Gizmo {
 
+    private static $sumTable = array(array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), array(0, 2, 4, 6, 8, 1, 3, 5, 7, 9));
+
+    public static function ExportToCSV($array, $filename = "export.csv", $delimiter = ",") {
+        // open raw memory as file so no temp files needed, you might run out of memory though
+        $f = fopen('php://memory', 'w');
+        // loop over the input array
+        foreach ($array as $line) {
+            // generate csv lines from the inner arrays
+            fputcsv($f, $line, $delimiter);
+        }
+        // reset the file pointer to the start of the file
+        fseek($f, 0);
+        // tell the browser it's going to be a csv file
+       
+        header('Content-Type: application/csv');
+        // tell the browser we want to save it instead of displaying it
+        header('Content-Disposition: attachment; filename="' . $filename . '";');
+        // make php send the generated csv lines to the browser
+        fpassthru($f);
+    }
+
+    public static function LuhnCalculate($number) {
+        $length = strlen($number);
+        $sum = 0;
+        $flip = 1;
+        // Sum digits (last one is check digit, which is not in parameter)
+        for ($i = $length - 1; $i >= 0;  --$i) {
+            $sum += Gizmo::$sumTable[$flip++ & 0x1][$number[$i]];
+        }
+        // Multiply by 9
+        $sum *= 9;
+        // Last digit of sum is check digit
+        return (int) substr($sum, -1, 1);
+    }
+
+    public function LuhnValidate($number, $digit) {
+        $calculated = Gizmo::LuhnCalculate($number);
+        if ($digit == $calculated) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static function UniqueId() {
+        $tme = microtime(true);
+        $tme = Gizmo::Replace('.', '', $tme);
+        $tme = str_pad($tme, 14, '0', STR_PAD_RIGHT);
+        return strtoupper(base_convert($tme, 10, 36));
+    }
+
     public static function Clean($data) {
         $data = trim($data);
         $data = stripslashes($data);
@@ -64,6 +115,10 @@ class Gizmo {
         return (int) $key;
     }
 
+    public static function ToMoney($key) {
+        return number_format($key, 2);
+    }
+
     public static function ToLower($key) {
         return strtolower($key);
     }
@@ -104,6 +159,10 @@ class Gizmo {
         return date("Y-m-d H:i:s");
     }
 
+    public static function DefaultDate() {
+        return "1900-01-01 00:00:00";
+    }
+
     public static function SafeHTMLEncode($str) {
         return htmlentities($str, ENT_QUOTES);
     }
@@ -140,6 +199,19 @@ class Gizmo {
         //return $y;
     }
 
+    public static function FromDate($dtm) {
+        //yyyy-mm-dd hh:ii:ss
+        $y = substr($dtm, 0, 4);
+        $m = substr($dtm, 5, 2);
+        $d = substr($dtm, 8, 2);
+        $h = substr($dtm, 11, 2);
+        $i = substr($dtm, 14, 2);
+        $s = substr($dtm, 17, 2);
+        $dt = mktime($h, $i, $s, $m, $d, $y);
+        return date('Y-m-d', $dt);
+        //return $y;
+    }
+
     public static function PrettyDateTime($dtm) {
         //yyyy-mm-dd hh:ii:ss
         $y = substr($dtm, 0, 4);
@@ -158,6 +230,17 @@ class Gizmo {
         $np = ucwords(strtolower($np));
         $np = str_replace(" ", "", $np);
         return $np;
+    }
+
+    public static function DifferenceInObject($obj1, $obj2) {
+        $array = (array) $obj1;
+        $diff = '';
+        foreach ($array as $key => $value) {
+            if (property_exists($obj2, $key) && $obj1->{$key} != $obj2->{$key}) {
+                $diff .= $key . ' = ' . $value . '; ';
+            }
+        }
+        return $diff;
     }
 
 }

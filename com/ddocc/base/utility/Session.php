@@ -8,6 +8,9 @@ class Session {
     }
 
     public static function GetClass($key) {
+        if(! Session::Exists($key)){
+            return null;
+        }
         return unserialize($_SESSION[$key]);
     }
 
@@ -23,7 +26,7 @@ class Session {
         return $r;
     }
     public static function Exists($key) {
-        return isset($_SESSION[$key]);
+        return isset($_SESSION[$key]) && !empty($_SESSION[$key]);
     }
 
     public static function Clear() {

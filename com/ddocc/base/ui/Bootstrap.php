@@ -2,7 +2,7 @@
 
 namespace com\ddocc\base\ui;
 
-class Bootstrap extends Page {
+class Bootstrap extends BasePage {
 
     public function __construct() {
         parent::__construct();
@@ -18,6 +18,7 @@ class Bootstrap extends Page {
     <title>' . PROJECT . ' - ' . $this->Title . '</title>
     <link href="' . SITEURL . 'content/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="' . SITEURL . 'content/lib/bootstrap/css/bootstrap-theme.min.css" rel="stylesheet">
+    <link href="' . SITEURL . 'content/lib/bootstrap/css/datepicker3.css" rel="stylesheet">
     <link href="' . SITEURL . 'content/lib/font-awesome/css/font-awesome.min.css" rel="stylesheet">
     <link href="' . SITEURL . 'content/css/site.css" rel="stylesheet">
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
@@ -28,6 +29,8 @@ class Bootstrap extends Page {
     <![endif]-->    
     <script src="' . SITEURL . 'content/lib/jquery/jquery-1.12.1.min.js"></script>
     <script src="' . SITEURL . 'content/lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="' . SITEURL . 'content/lib/bootstrap/js/bootstrap-datepicker.js"></script>
+    <script src="' . SITEURL . 'content/lib/bootstrap/js/html-table-search.js"></script>
     <script src="' . SITEURL . 'content/lib/rmariuzzo/jquery.checkboxes-1.0.6.min.js"></script>
   </head> <body> 
 <div class="container-fluid main1">  
@@ -35,9 +38,6 @@ class Bootstrap extends Page {
     }
 
     public function Footer() {
-
-
-
         echo '</div>
     <script src="' . SITEURL . 'content/js/site.js"></script>
   </body>
@@ -51,22 +51,35 @@ class Bootstrap extends Page {
             <span class="sr-only">Toggle navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
           </button> <a class="navbar-brand" href="' . Url('home.index') . '">' . PROJECT . '</a>
         </div> <div id="navbar" class="collapse navbar-collapse">
-          <ul class="nav navbar-nav">'. $this->menutext .'
+          <ul class="nav navbar-nav">' . $this->menutext . '
           </ul><ul class="nav navbar-nav navbar-right"> 
-          <li class="dropdown">
-          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Info <span class="caret"></span></a>
+          
+<li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" 
+          aria-haspopup="true" aria-expanded="false"><i class="fa fa-user"></i> <span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a href="' . Url('info.about') . '">About</a></li>
-            <li><a href="' . Url('info.contact') . '">Contact</a></li>
-            <li><a href="' . Url('info.help') . '">Help</a></li>
-          </ul> </li>  
-          <li class="dropdown">
-          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">' . $this->su->auth_email . ' <span class="caret"></span></a>
-          <ul class="dropdown-menu">
-            <li><a href="' . Url('site-user.profile') . '">My Profile</a></li>
+            <li><a href="' . Url('site-user.profile') . '"><div class="text-center small">
+                
+ ' . $this->su->Fullname() . '  <br />   
+ ' . $this->su->role_name . '  <br />            
+<img src="' . SITEURL . 'content/images/avatar.png" 
+                class="img-responsive img-thumbnail" style="width:50%" />
+</div>
+                
+</a></li> 
             <li><a href="' . Url('site-user.setting') . '">Settings</a></li>
             <li><a href="' . Url('account.logout') . '">Logout</a></li>                
           </ul> </li> 
+
+          <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" 
+          aria-haspopup="true" aria-expanded="false"><i class="fa fa-info-circle"></i><span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="' . UrlID('info', 'about') . '">About</a></li>
+            <li><a href="' . UrlID('info', 'contact') . '">Contact</a></li>
+            <li><a href="' . UrlID('info', 'help') . '">Help</a></li>
+          </ul> </li>  
+          
           </ul> </div><!--/.nav-collapse --> </div> </nav>';
     }
 
@@ -80,13 +93,13 @@ class Bootstrap extends Page {
         }
         if ($title == '') {
             $title = $this->Title;
-        }        
+        }
         $txt = '<div class="row"> <div class="col-md-12">
         <div class="page-header"> <h1>' . $title . $title_mini . '</h1>
         </div> </div> </div>';
-        echo $txt;  
-        if($crumbs == 1){
-            $this->BreadCrumb();    
+        echo $txt;
+        if ($crumbs == 1) {
+            $this->BreadCrumb();
         }
     }
 

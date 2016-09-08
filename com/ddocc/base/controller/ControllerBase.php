@@ -15,4 +15,6 @@ namespace com\ddocc\base\controller;
  */
 class ControllerBase {
     //put your code here
+
+
 }
